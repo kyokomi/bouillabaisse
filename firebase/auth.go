@@ -3,16 +3,12 @@ package firebase
 import (
 	"bytes"
 	"fmt"
-
+	"io/ioutil"
 	"net/http"
 
-	"io/ioutil"
-
-	"github.com/bitly/go-simplejson"
 	"github.com/dustin/gojson"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
 	"github.com/pkg/errors"
-	"gopkg.in/go-pp/pp.v2"
 )
 
 const (
@@ -26,8 +22,18 @@ const (
 type Auth struct {
 	Token        string `json:"idToken"`
 	RefreshToken string `json:"refreshToken"`
-	ExpiresIn    int    `json:"expiresIn"`
+	ExpiresIn    string `json:"expiresIn"`
 	// User
+	LocalID       string `json:"localId"`
+	FederatedID   string `json:"federatedId"`
+	FirstName     string `json:"firstName"`
+	LastName      string `json:"lastName"`
+	DisplayName   string `json:"displayName"`
+	ScreenName    string `json:"screenName"`
+	PhotoUrl      string `json:"photoUrl"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"emailVerified"`
+	ProviderID    string `json:"providerId"`
 }
 
 // Config
@@ -86,7 +92,7 @@ func (s *AuthService) SignInWithEmailAndPassword(email, password string) Auth {
 }
 
 func (s *AuthService) SignInWithOAuth(provider provider.Provider, postBody string) (Auth, error) {
-	return Auth{}, s.signInWithPostContent(googleIdentityURL, signInParams{
+	return s.signIn(googleIdentityURL, signInParams{
 		PostBody:          postBody,
 		RequestURI:        "http://localhost",
 		ReturnSecureToken: true,
@@ -116,27 +122,25 @@ func (s *AuthService) LinkAccountsWithOAuth(auth Auth, provider provider.Provide
 }
 
 type signInParams struct {
-	PostBody          string `json:"postBody"`
 	RequestURI        string `json:"requestUri"`
+	PostBody          string `json:"postBody"`
 	ReturnSecureToken bool   `json:"returnSecureToken"`
-	SessionID         string `json:"sessionId"`
 }
 
-func (s *AuthService) signInWithPostContent(googleURL string, params signInParams) error {
+func (s *AuthService) signIn(googleURL string, params signInParams) (Auth, error) {
 	// Request Post
 	body, err := json.Marshal(params)
 	if err != nil {
-		return errors.Wrapf(err, "signInParams Marshal error %#v", params)
+		return Auth{}, errors.Wrapf(err, "signInParams Marshal error %#v", params)
 	}
 	url := fmt.Sprintf(googleURL, s.client.config.ApiKey)
-	pp.Println(url, string(body)) // TODO: debug
 	resp, err := s.client.httpClient.Post(
 		url,
 		"application/json",
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return errors.Wrapf(err, "%s request error params = %#v", googleURL, params)
+		return Auth{}, errors.Wrapf(err, "%s request error params = %#v", url, params)
 	}
 	defer resp.Body.Close()
 
@@ -145,14 +149,13 @@ func (s *AuthService) signInWithPostContent(googleURL string, params signInParam
 		if err != nil {
 			data = []byte{}
 		}
-		return errors.Errorf("response error statudCode = %d body = %s\n", resp.StatusCode, string(data))
+		return Auth{}, errors.Errorf("response error statudCode = %d body = %s\n", resp.StatusCode, string(data))
 	}
 
-	json, err := simplejson.NewFromReader(resp.Body)
-	if err != nil {
-		return errors.Wrapf(err, "%s response Marshal error")
+	var auth Auth
+	if err := json.NewDecoder(resp.Body).Decode(&auth); err != nil {
+		return Auth{}, errors.Wrap(err, "response json decode error")
 	}
-	pp.Println(json)
 
-	return nil
+	return auth, nil
 }

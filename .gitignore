@@ -78,3 +78,5 @@ vendor
 # bouillabaisse
 bouillabaisse
 config.yaml
+authstore.json
+

@@ -3,7 +3,6 @@ package provider
 import (
 	"fmt"
 
-	"github.com/kyokomi/bouillabaisse/twitter"
 	"github.com/mrjones/oauth"
 	"github.com/stretchr/gomniauth"
 	"github.com/stretchr/gomniauth/common"
@@ -12,6 +11,8 @@ import (
 	"github.com/stretchr/gomniauth/providers/github"
 	"github.com/stretchr/gomniauth/providers/google"
 	"github.com/stretchr/objx"
+
+	"github.com/kyokomi/bouillabaisse/twitter"
 )
 
 const (

@@ -33,6 +33,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TODO: help command
+	// TODO: show local Auth info
+	// TODO: refreshToken refresh
+
 	providerName, err := inputWait("provider [twitter/google/facebook/github/email]")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -47,9 +51,6 @@ func main() {
 
 	signInURL := provider.SignInURL(p, domain)
 	fmt.Fprintln(os.Stdout, signInURL)
-
-	// TODO: channelでaccessTokenとかを待つ
-	// TODO: FirebaseAuth Login
 
 	if _, err := inputWait("exit ? [y/n]"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
