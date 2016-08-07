@@ -9,91 +9,46 @@ import (
 	"github.com/labstack/echo/engine/standard"
 	"github.com/labstack/echo/middleware"
 	"github.com/pkg/errors"
-	"github.com/stretchr/gomniauth"
-	"github.com/stretchr/gomniauth/providers/facebook"
-	"github.com/stretchr/gomniauth/providers/github"
-	"github.com/stretchr/gomniauth/providers/google"
-	"github.com/stretchr/objx"
 	"gopkg.in/go-pp/pp.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/kyokomi/bouillabaisse/twitter"
+	"github.com/kyokomi/bouillabaisse/firebase"
+	"github.com/kyokomi/bouillabaisse/firebase/provider"
 )
 
-var twitterOAuthClient *twitter.OAuthClient
+var fireClient *firebase.Client
 
 type ServerConfig struct {
-	ListenAddr               string
-	AuthSecretKey            string // gomniauth setup secretKey
-	GitHubClientID           string
-	GitHubSecretKey          string
-	GoogleClientID           string
-	GoogleSecretKey          string
-	FacebookID               string
-	FacebookSecretKey        string
-	TwitterConsumerID        string
-	TwitterConsumerSecretKey string
+	ListenAddr     string
+	FirebaseApiKey string
+
+	AuthConfig provider.Config
 }
 
 func loginHandler(c echo.Context) error {
 	providerName := c.Param("provider")
 
-	provider, err := gomniauth.Provider(providerName)
+	loginUrl, err := provider.GetBeginAuthURL(provider.New(providerName))
 	if err != nil {
-		if providerName == TwitterProvider.Name() {
-			return loginTwitterHandler(c)
-		}
-		return errors.Wrapf(err, "認証プロバイダーの取得に失敗しました %s", provider)
-	}
-
-	loginUrl, err := provider.GetBeginAuthURL(nil, nil)
-	if err != nil {
-		return errors.Wrapf(err, "GetBeginAuthURLの呼び出し中にエラーが発生しました: %s", provider)
+		return errors.Wrapf(err, "GetBeginAuthURLの呼び出し中にエラーが発生しました: %s", providerName)
 	}
 
 	return c.Redirect(http.StatusTemporaryRedirect, loginUrl)
 }
 
-func loginTwitterHandler(c echo.Context) error {
-	requestURL, err := twitterOAuthClient.GetRequestTokenAndURL()
-	if err != nil {
-		return errors.Wrap(err, "GetRequestTokenAndURL error")
-	}
-
-	return c.Redirect(http.StatusFound, requestURL)
-}
-
 func callbackHandler(c echo.Context) error {
 	providerName := c.Param("provider")
 
-	provider, err := gomniauth.Provider(providerName)
+	p := provider.New(providerName)
+	postBody, err := provider.BuildSignInPostBody(p, c.QueryParams())
 	if err != nil {
-		if providerName == TwitterProvider.Name() {
-			return authTwitterCallbackHandler(c)
-		}
-		return errors.Wrapf(err, "認証プロバイダーの取得に失敗しました %s", provider)
+		return errors.Wrapf(err, "%s BuildSignInPostBody error", p.Name())
+	}
+	if _, err := fireClient.Auth.SignInWithOAuth(p, postBody); err != nil {
+		return errors.Wrapf(err, "%s SignInWithOAuth error", p.Name())
 	}
 
-	rawQuery := c.Request().URL().QueryString()
-
-	creds, err := provider.CompleteAuth(objx.MustFromURLQuery(rawQuery))
-	if err != nil {
-		return errors.Wrapf(err, "認証を完了できませんでした %s", provider)
-	}
-
-	return c.JSON(http.StatusOK, creds)
-}
-
-func authTwitterCallbackHandler(c echo.Context) error {
-	verificationCode := c.QueryParam("oauth_verifier")
-	tokenKey := c.QueryParam("oauth_token")
-
-	accessToken, err := twitterOAuthClient.GetAccessToken(tokenKey, verificationCode)
-	if err != nil {
-		return errors.Wrap(err, "GetAccessToken error")
-	}
-
-	return c.JSON(http.StatusOK, accessToken)
+	return c.JSON(http.StatusOK, `{"message": "TODO: OK"`)
 }
 
 func Serve(env, configPath string) (string, error) {
@@ -116,35 +71,19 @@ func ServeConfig(config ServerConfig) (string, error) {
 	baseURL := fmt.Sprintf("http://localhost%s", config.ListenAddr)
 
 	// setup
-	gomniauth.SetSecurityKey(config.AuthSecretKey)
-	gomniauth.WithProviders(
-		github.New(
-			config.GitHubClientID,
-			config.GitHubSecretKey,
-			GitHubProvider.CallbackURL(baseURL),
-		),
-		google.New(
-			config.GoogleClientID,
-			config.GoogleSecretKey,
-			GoogleProvider.CallbackURL(baseURL),
-		),
-		facebook.New(
-			config.FacebookID,
-			config.FacebookSecretKey,
-			FacebookProvider.CallbackURL(baseURL),
-		),
-	)
-	twitterOAuthClient = twitter.NewTwitterOAuth(
-		config.TwitterConsumerID,
-		config.TwitterConsumerSecretKey,
-		TwitterProvider.CallbackURL(baseURL),
-	)
+	provider.InitOAuth(baseURL, config.AuthConfig)
+
+	fireClient = firebase.NewClient(firebase.Config{ApiKey: config.FirebaseApiKey}, &http.Transport{})
 
 	e := echo.New()
 
 	// middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.SetHTTPErrorHandler(func(err error, ctx echo.Context) {
+		fmt.Printf("%+v", err)
+		e.DefaultHTTPErrorHandler(err, ctx)
+	})
 
 	// handler
 	e.GET("/", func(c echo.Context) error {
@@ -154,8 +93,8 @@ func ServeConfig(config ServerConfig) (string, error) {
 		return echo.ErrNotFound
 	})
 
-	e.GET(authLoginPath+"/:provider", loginHandler)
-	e.GET(callbackPath+"/:provider", callbackHandler)
+	e.GET(provider.RESTAuthLoginPath(), loginHandler)
+	e.GET(provider.RESTCallbackPath(), callbackHandler)
 
 	// TODO: 適当にgoroutine
 	go e.Run(standard.New(config.ListenAddr))

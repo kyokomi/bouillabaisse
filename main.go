@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/kyokomi/bouillabaisse/firebase/provider"
 )
 
 var (
@@ -37,13 +39,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	provider := NewProvider(providerName)
-	if provider == UnknownProvider {
+	p := provider.New(providerName)
+	if p == provider.UnknownProvider {
 		fmt.Fprintf(os.Stderr, "Don't support provider [%s]\n", providerName)
 		os.Exit(1)
 	}
 
-	signInURL := provider.SignInURL(domain)
+	signInURL := provider.SignInURL(p, domain)
 	fmt.Fprintln(os.Stdout, signInURL)
 
 	// TODO: channelでaccessTokenとかを待つ
