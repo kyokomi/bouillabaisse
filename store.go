@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"time"
-	"os"
 
-	"github.com/dustin/gojson"
 	"github.com/kyokomi/bouillabaisse/firebase"
+	"gopkg.in/yaml.v2"
 )
 
 // TODO: SQLiteとかにしたほうがよいかも?
@@ -19,18 +18,34 @@ type AuthStore struct {
 	CreatedAt time.Time
 }
 
-func (a AuthStore) Save(dirPath string, fileName string) error {
-	buf := bytes.Buffer{}
-	if err := json.NewEncoder(&buf).Encode(a); err != nil {
-		return err
+func (a *AuthStore) ExpiresInText() string {
+	expiredTime, isExpired := a.ExpiredTime()
+	if isExpired || expiredTime.Before(time.Now()) {
+		return "期限切れ" // TODO: text
 	}
-	return ioutil.WriteFile(filepath.Join(dirPath, fileName), buf.Bytes(), 0666)
+	return expiredTime.String()
 }
 
-func (a *AuthStore) Load(dirPath string, fileName string) error {
-	f, err := os.Open(filepath.Join(dirPath, fileName))
+func (a *AuthStore) ExpiredTime() (time.Time, bool) {
+	expiresIn, err := strconv.Atoi(a.ExpiresIn)
+	if err != nil {
+		return time.Time{}, true
+	}
+	return a.UpdateAt.Add(time.Duration(expiresIn) * time.Second), false
+}
+
+func (a AuthStore) Save(dirPath string, fileName string) error {
+	data, err := yaml.Marshal(&a)
 	if err != nil {
 		return err
 	}
-	return json.NewDecoder(f).Decode(&a)
+	return ioutil.WriteFile(filepath.Join(dirPath, fileName), data, 0666)
+}
+
+func (a *AuthStore) Load(dirPath string, fileName string) error {
+	data, err := ioutil.ReadFile(filepath.Join(dirPath, fileName))
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(data, &a)
 }

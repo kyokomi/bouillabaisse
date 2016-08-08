@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
 	"gopkg.in/go-pp/pp.v2"
@@ -14,17 +16,7 @@ var (
 		"configuration fila path yaml [default: ./config.yaml]")
 	env = flag.String("e", "default",
 		"env default")
-	cmd = flag.String("cmd", "help", "execute command")
 )
-
-func inputWait(helpMessage string) (string, error) {
-	fmt.Printf("%s > ", helpMessage)
-	var input string
-	if _, err := fmt.Scanf("%s", &input); err != nil {
-		return "", err
-	}
-	return input, nil
-}
 
 func main() {
 	flag.Parse()
@@ -41,43 +33,58 @@ func main() {
 	// TODO: show local Auth info
 	// TODO: refreshToken refresh
 
-	input := *cmd
-	getInputCommand := func() string {
-		return input
-	}
-	inputReset := func() {
-		input = ""
-	}
-	inputSet := func(text string) {
-		input = text
-	}
-	isEmptyCommand := func() bool {
-		return getInputCommand() == ""
-	}
-
-	for true {
-		if isEmptyCommand() {
-			inputCmd, err := inputWait("[ exit / help / list / provider ]")
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			inputSet(inputCmd)
+	getInputCommand := func(input string) string {
+		commands := strings.Fields(input)
+		if len(commands) >= 1 {
+			return commands[0]
 		}
+		return ""
+	}
+	getInputSubCommand := func(input string) string {
+		commands := strings.Fields(input)
+		if len(commands) >= 2 {
+			return commands[1]
+		}
+		return ""
+	}
 
-		switch getInputCommand() {
+	printCommandInput()
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		input := scanner.Text()
+
+		switch getInputCommand(input) {
 		case "help":
-			fmt.Fprintln(os.Stdout, "help is comming soon!")
+			fmt.Println("[ exit / help / list / provider / show ]")
 		case "list":
 			a := AuthStore{}
 			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			pp.Println(a)
+
+			fmt.Fprintf(os.Stdout, "%s\t%s\t%s\t%s\n",
+				a.LocalID,
+				a.ProviderID,
+				a.DisplayName,
+				a.ExpiresInText(),
+			)
+
+		case "show":
+			a := AuthStore{}
+			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
+			if a.LocalID == getInputSubCommand(input) {
+				pp.Println(a)
+			}
+
 		case "provider":
-			providerName, err := inputWait("provider [twitter/google/facebook/github/email]")
-			if err != nil {
+			var providerName string
+			fmt.Println("provider [twitter/google/facebook/github/email] >")
+			if _, err := fmt.Scan(&providerName); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
@@ -92,10 +99,21 @@ func main() {
 			fmt.Fprintln(os.Stdout, signInURL)
 		case "exit":
 			goto END
+		default:
+			fmt.Fprintf(os.Stdout, "%s command not found\n", getInputCommand(input))
 		}
-		inputReset()
+
+		printCommandInput()
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
 	}
 
 END:
 	fmt.Println("exit goodbye!")
+}
+
+func printCommandInput() {
+	fmt.Print("\n [ exit / help / list / provider ] > ")
 }
