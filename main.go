@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
+	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
 	"gopkg.in/go-pp/pp.v2"
 )
@@ -55,7 +57,7 @@ func main() {
 
 		switch getInputCommand(input) {
 		case "help":
-			fmt.Println("[ exit / help / list / provider / show ]")
+			fmt.Println("[ exit / help / list / provider / show / token ]")
 		case "list":
 			a := AuthStore{}
 			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
@@ -80,11 +82,32 @@ func main() {
 			if a.LocalID == getInputSubCommand(input) {
 				pp.Println(a)
 			}
+		case "token":
+			uid := getInputSubCommand(input)
+
+			a := AuthStore{}
+			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
+			if a.LocalID != uid {
+				fmt.Fprintf(os.Stderr, "Not found uid [%s]\n", uid)
+			} else {
+				fireClient := firebase.NewClient(
+					firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+				)
+				token, err := fireClient.Token.ExchangeRefreshToken(a.RefreshToken)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "ExchangeRefreshToken error [%s]\n", err.Error())
+				} else {
+					pp.Println(token)
+				}
+			}
 
 		case "provider":
-			var providerName string
-			fmt.Println("provider [twitter/google/facebook/github/email] >")
-			if _, err := fmt.Scan(&providerName); err != nil {
+			providerName, err := inputText("provider [twitter/google/facebook/github/email]")
+			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
@@ -112,6 +135,15 @@ func main() {
 
 END:
 	fmt.Println("exit goodbye!")
+}
+
+func inputText(message string) (string, error) {
+	var text string
+	fmt.Printf("\n %s > \n", message)
+	if _, err := fmt.Scan(&text); err != nil {
+		return "", err
+	}
+	return text, nil
 }
 
 func printCommandInput() {

@@ -6,7 +6,8 @@ type Client struct {
 	config     Config
 	httpClient *http.Client
 
-	Auth *AuthService
+	Auth  *AuthService
+	Token *TokenService
 }
 
 type Config struct {
@@ -20,6 +21,9 @@ func NewClient(config Config, transport http.RoundTripper) *Client {
 	}
 
 	c.Auth = &AuthService{
+		client: c,
+	}
+	c.Token = &TokenService{
 		client: c,
 	}
 
