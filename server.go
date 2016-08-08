@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/labstack/echo/middleware"
 	"github.com/pkg/errors"
 	"gopkg.in/go-pp/pp.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
@@ -20,16 +18,7 @@ import (
 
 type ServerContext struct {
 	fireClient *firebase.Client
-	config     ServerConfig
-}
-
-type ServerConfig struct {
-	ListenAddr        string
-	FirebaseApiKey    string
-	AuthStoreDirPath  string
-	AuthStoreFileName string
-
-	AuthConfig provider.Config
+	config     Config
 }
 
 func (*ServerContext) loginHandler(c echo.Context) error {
@@ -61,7 +50,9 @@ func (s *ServerContext) callbackHandler(c echo.Context) error {
 
 	now := time.Now()
 	a := AuthStore{Auth: auth, CreatedAt: now, UpdateAt: now}
-	if err := a.Save(s.config.AuthStoreDirPath, s.config.AuthStoreFileName); err != nil {
+	if err := a.Save(
+		s.config.Local.AuthStoreDirPath,
+		s.config.Local.AuthStoreFileName); err != nil {
 		log.Errorf("%+v", errors.Wrapf(err, "%s StoreSave error", p.Name()))
 		// 後続処理は行う
 	}
@@ -69,31 +60,15 @@ func (s *ServerContext) callbackHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, auth)
 }
 
-func Serve(env, configPath string) (string, error) {
-	buf, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return "", err
-	}
-
-	var cnf map[string]ServerConfig
-	if err := yaml.Unmarshal(buf, &cnf); err != nil {
-		return "", err
-	}
-
-	pp.Println("config => ", cnf)
-
-	return ServeConfig(cnf[env])
-}
-
-func ServeConfig(config ServerConfig) (string, error) {
-	baseURL := fmt.Sprintf("http://localhost%s", config.ListenAddr)
+func ServeWithConfig(config Config) (string, error) {
+	baseURL := fmt.Sprintf("http://localhost%s", config.Server.ListenAddr)
 
 	// setup
-	provider.InitOAuth(baseURL, config.AuthConfig)
+	provider.InitOAuth(baseURL, config.Auth)
 
 	s := ServerContext{
 		fireClient: firebase.NewClient(
-			firebase.Config{ApiKey: config.FirebaseApiKey}, &http.Transport{},
+			firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
 		),
 		config: config,
 	}
@@ -120,7 +95,7 @@ func ServeConfig(config ServerConfig) (string, error) {
 	e.GET(provider.RESTCallbackPath(), s.callbackHandler)
 
 	// TODO: 適当にgoroutine
-	go e.Run(standard.New(config.ListenAddr))
+	go e.Run(standard.New(config.Server.ListenAddr))
 
 	return baseURL, nil
 }

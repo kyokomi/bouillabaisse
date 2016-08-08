@@ -3,13 +3,15 @@ package main
 import (
 	"bytes"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"time"
+	"os"
 
 	"github.com/dustin/gojson"
 	"github.com/kyokomi/bouillabaisse/firebase"
 )
+
+// TODO: SQLiteとかにしたほうがよいかも?
 
 type AuthStore struct {
 	firebase.Auth
