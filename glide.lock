@@ -1,5 +1,5 @@
 hash: 02ee55c83f3955c4512252806e400c7dd1a0fdfcc50b227201eae161c17f94fe
-updated: 2016-08-06T16:44:22.653073707+09:00
+updated: 2016-08-09T10:25:29.062030249+09:00
 imports:
 - name: github.com/azr/backoff
   version: 53511d3c733003985b0b76f733df1f4d0095ee6a
@@ -35,11 +35,11 @@ imports:
 - name: github.com/mattn/go-colorable
   version: ed8eb9e318d7a84ce5915b495b7d35e0cfe7b5a8
 - name: github.com/mattn/go-isatty
-  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
+  version: 66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8
 - name: github.com/mrjones/oauth
   version: 31f1e8e5addda51bc50ebfc8bb930d4642372654
 - name: github.com/pkg/errors
-  version: 2a9be18ecd8c148be18be08a811e33809206da19
+  version: a22138067af1c4942683050411a841ade67fe1eb
 - name: github.com/stretchr/codecs
   version: 8e29b38960a541ed1264b001dcb21701283c590d
   subpackages:
@@ -57,8 +57,8 @@ imports:
   - providers/facebook
   - providers/github
   - providers/google
-  - common
   - oauth2
+  - common
 - name: github.com/stretchr/objx
   version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
 - name: github.com/stretchr/signature
@@ -70,7 +70,7 @@ imports:
 - name: github.com/stretchr/tracer
   version: 66d3696bba973e1697f7d68413b3f19c6d6e2a7c
 - name: github.com/ugorji/go
-  version: 3487a5545b3d480987dfb0492035299077fab33a
+  version: 4a1cb5252a6951f715a85d0e4be334c2a2dbf2a2
   subpackages:
   - codec
 - name: github.com/valyala/fasttemplate
@@ -83,6 +83,10 @@ imports:
   version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
   subpackages:
   - unix
+- name: gopkg.in/go-pp/pp.v2
+  version: fa6ef2628b80777cf9af03bff7ad351a12b774c4
+- name: gopkg.in/yaml.v2
+  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 - name: labix.org/v2/mgo
   version: "287"
   subpackages:
