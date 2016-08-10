@@ -6,7 +6,7 @@ bouillabaisse is Firebase Authentication client command-line tool.
 
 ## TODO
 
-- [ ] Authenticate with Firebase using Password-Based Accounts.
+- [x] Authenticate with Firebase using Password-Based Accounts.
 - [x] Authenticate Using Google Sign-In.
 - [x] Authenticate Using Facebook Login.
 - [x] Authenticate Using Twitter.
