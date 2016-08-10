@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"time"
+
 	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
 	"gopkg.in/go-pp/pp.v2"
@@ -26,6 +28,11 @@ func main() {
 	config := NewConfig(*env, *configPath)
 	domain, err := ServeWithConfig(config)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	if err := stores.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -59,39 +66,56 @@ func main() {
 		case "help":
 			fmt.Println("[ exit / help / list / provider / show / token ]")
 		case "list":
-			a := AuthStore{}
-			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+			for _, a := range stores.stores {
+				fmt.Fprintf(os.Stdout, "%s\t%s\t%s\t%s\t%s\n",
+					a.LocalID,
+					a.ProviderID,
+					a.DisplayName,
+					a.ExpiresInText(),
+					a.Email,
+				)
 			}
-
-			fmt.Fprintf(os.Stdout, "%s\t%s\t%s\t%s\n",
-				a.LocalID,
-				a.ProviderID,
-				a.DisplayName,
-				a.ExpiresInText(),
-			)
 
 		case "show":
-			a := AuthStore{}
-			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
+			uid := getInputSubCommand(input)
+			if a, ok := stores.stores[uid]; ok {
+				pp.Println(a)
+			}
+		case "email":
+			email, err := inputText("email")
+			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
 
-			if a.LocalID == getInputSubCommand(input) {
-				pp.Println(a)
+			password, err := inputText("password")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
 			}
+
+			fireClient := firebase.NewClient(
+				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+			)
+
+			var a firebase.Auth
+			a, err = fireClient.Auth.SignInWithEmailAndPassword(email, password)
+			if err != nil {
+				a, err = fireClient.Auth.CreateUserWithEmailAndPassword(email, password)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+			}
+			stores.Add(AuthStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()})
+
+			pp.Println(a)
+
 		case "token":
 			uid := getInputSubCommand(input)
 
-			a := AuthStore{}
-			if err := a.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-
-			if a.LocalID != uid {
+			a, ok := stores.stores[uid]
+			if !ok {
 				fmt.Fprintf(os.Stderr, "Not found uid [%s]\n", uid)
 			} else {
 				fireClient := firebase.NewClient(
@@ -102,6 +126,8 @@ func main() {
 					fmt.Fprintf(os.Stderr, "ExchangeRefreshToken error [%s]\n", err.Error())
 				} else {
 					pp.Println(token)
+
+					// TODO: token上書き
 				}
 			}
 
@@ -120,6 +146,55 @@ func main() {
 
 			signInURL := provider.SignInURL(p, domain)
 			fmt.Fprintln(os.Stdout, signInURL)
+		case "email-verify":
+			idToken := getInputSubCommand(input)
+			fireClient := firebase.NewClient(
+				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+			)
+
+			if err := fireClient.Auth.SendEmailVerify(idToken); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			} else {
+				pp.Println("send ok")
+			}
+		case "new-email":
+			uid := getInputSubCommand(input)
+
+			nextEmail, err := inputText("next email")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
+			fireClient := firebase.NewClient(
+				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+			)
+
+			if err := fireClient.Auth.SendNewEmailAccept(stores.stores[uid].Token,
+				stores.stores[uid].Email, nextEmail); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			} else {
+				pp.Println("send ok")
+			}
+		case "pasword-reset":
+			email := getInputSubCommand(input)
+			fireClient := firebase.NewClient(
+				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+			)
+
+			if err := fireClient.Auth.SendPasswordResetEmail(email); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			} else {
+				pp.Println("send ok")
+			}
+		case "save":
+			if err := stores.Save(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
 		case "exit":
 			goto END
 		default:
@@ -139,7 +214,7 @@ END:
 
 func inputText(message string) (string, error) {
 	var text string
-	fmt.Printf("\n %s > \n", message)
+	fmt.Printf("\n %s > ", message)
 	if _, err := fmt.Scan(&text); err != nil {
 		return "", err
 	}
@@ -147,5 +222,5 @@ func inputText(message string) (string, error) {
 }
 
 func printCommandInput() {
-	fmt.Print("\n [ exit / help / list / provider ] > ")
+	fmt.Print("\n [ exit / help / show <uid> / list / email ] \n [ provider / token <uid>/ email-verify <token> / new-email <uid> / pasword-reset <email> ]\n > ")
 }

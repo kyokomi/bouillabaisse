@@ -11,6 +11,11 @@ import (
 )
 
 // TODO: SQLiteとかにしたほうがよいかも?
+var stores AuthStores
+
+type AuthStores struct {
+	stores map[string]AuthStore
+}
 
 type AuthStore struct {
 	firebase.Auth
@@ -23,7 +28,7 @@ func (a *AuthStore) ExpiresInText() string {
 	if isExpired || expiredTime.Before(time.Now()) {
 		return "期限切れ" // TODO: text
 	}
-	return expiredTime.String()
+	return expiredTime.Format("2006-01-02 15:04:05")
 }
 
 func (a *AuthStore) ExpiredTime() (time.Time, bool) {
@@ -34,18 +39,22 @@ func (a *AuthStore) ExpiredTime() (time.Time, bool) {
 	return a.UpdateAt.Add(time.Duration(expiresIn) * time.Second), false
 }
 
-func (a AuthStore) Save(dirPath string, fileName string) error {
-	data, err := yaml.Marshal(&a)
+func (a *AuthStores) Add(store AuthStore) {
+	a.stores[store.LocalID] = store
+}
+
+func (a *AuthStores) Save(dirPath string, fileName string) error {
+	data, err := yaml.Marshal(&a.stores)
 	if err != nil {
 		return err
 	}
 	return ioutil.WriteFile(filepath.Join(dirPath, fileName), data, 0666)
 }
 
-func (a *AuthStore) Load(dirPath string, fileName string) error {
+func (a *AuthStores) Load(dirPath string, fileName string) error {
 	data, err := ioutil.ReadFile(filepath.Join(dirPath, fileName))
 	if err != nil {
 		return err
 	}
-	return yaml.Unmarshal(data, &a)
+	return yaml.Unmarshal(data, &a.stores)
 }

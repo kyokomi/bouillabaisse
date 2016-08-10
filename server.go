@@ -13,7 +13,6 @@ import (
 
 	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
-	"github.com/labstack/gommon/log"
 )
 
 type ServerContext struct {
@@ -50,12 +49,7 @@ func (s *ServerContext) callbackHandler(c echo.Context) error {
 
 	now := time.Now()
 	a := AuthStore{Auth: auth, CreatedAt: now, UpdateAt: now}
-	if err := a.Save(
-		s.config.Local.AuthStoreDirPath,
-		s.config.Local.AuthStoreFileName); err != nil {
-		log.Errorf("%+v", errors.Wrapf(err, "%s StoreSave error", p.Name()))
-		// 後続処理は行う
-	}
+	stores.Add(a)
 
 	return c.JSON(http.StatusOK, auth)
 }
