@@ -1,9 +1,6 @@
 package firebase
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/dustin/gojson"
@@ -12,11 +9,11 @@ import (
 )
 
 const (
-	googleIdentityURL      = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyAssertion?key=%s"
-	googleSignUpURL        = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=%s"
-	googlePasswordURL      = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=%s"
-	googlePasswordResetURL = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getOobConfirmationCode?key=%s"
-	googleSetAccountURL    = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/setAccountInfo?key=%s"
+	googleIdentityURL          = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyAssertion?key=%s"
+	googleSignUpURL            = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=%s"
+	googlePasswordURL          = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=%s"
+	googleEmailConfirmationURL = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getOobConfirmationCode?key=%s"
+	googleSetAccountURL        = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/setAccountInfo?key=%s"
 )
 
 type Auth struct {
@@ -49,26 +46,39 @@ type AuthService struct {
 	client *Client
 }
 
-func (s *AuthService) CreateUserWithEmailAndPassword(email, password string) Auth {
-	// TODO:
-	/*
-	   var content = $"{{\"email\":\"{email}\",\"password\":\"{password}\",\"returnSecureToken\":true}}";
-
-	   return await this.SignInWithPostContentAsync(GoogleSignUpUrl, content).ConfigureAwait(false);
-	*/
-	return Auth{}
+// CreateUserWithEmailAndPassword emailとpasswordで新規ユーザ登録
+func (s *AuthService) CreateUserWithEmailAndPassword(email, password string) (Auth, error) {
+	return s.signIn(googleSignUpURL, map[string]interface{}{
+		"email":             email,
+		"password":          password,
+		"returnSecureToken": true,
+	})
 }
 
-func (s *AuthService) SendPasswordResetEmailAsync(email string) error {
-	// TODO:
-	/*
-	   var content = $"{{\"requestType\":\"PASSWORD_RESET\",\"email\":\"{email}\"}}";
+// SendPasswordResetEmail 指定のemailユーザにpasswordリセットを通知
+func (s *AuthService) SendPasswordResetEmail(email string) error {
+	return s.client.postNoResponse(googleEmailConfirmationURL, map[string]interface{}{
+		"requestType": "PASSWORD_RESET",
+		"email":       email,
+	})
+}
 
-	   var response = await this.client.PostAsync(new Uri(string.Format(GooglePasswordResetUrl, this.authConfig.ApiKey)), new StringContent(content, Encoding.UTF8, "application/json")).ConfigureAwait(false);
+// SendEmailVerify 指定のemailユーザにメール確認を通知
+func (s *AuthService) SendEmailVerify(idToken string) error {
+	return s.client.postNoResponse(googleEmailConfirmationURL, map[string]interface{}{
+		"requestType": "VERIFY_EMAIL",
+		"idToken":     idToken,
+	})
+}
 
-	   response.EnsureSuccessStatusCode();
-	*/
-	return nil
+// SendEmailVerify 指定のemailユーザにメール確認を通知 TODO: Deprecated うまく動かない
+func (s *AuthService) SendNewEmailAccept(idToken, oldEmail, nextEmail string) error {
+	return s.client.postNoResponse(googleEmailConfirmationURL, map[string]interface{}{
+		"requestType": "NEW_EMAIL_ACCEPT",
+		"idToken":     idToken,
+		"email":       oldEmail,
+		"newEmail":    nextEmail,
+	})
 }
 
 func (s *AuthService) SignInAnonymously() Auth {
@@ -81,21 +91,21 @@ func (s *AuthService) SignInAnonymously() Auth {
 	return Auth{}
 }
 
-func (s *AuthService) SignInWithEmailAndPassword(email, password string) Auth {
-	// TODO:
-	/*
-	   var content = $"{{\"email\":\"{email}\",\"password\":\"{password}\",\"returnSecureToken\":true}}";
-
-	   return await this.SignInWithPostContentAsync(GooglePasswordUrl, content).ConfigureAwait(false);
-	*/
-	return Auth{}
+// SignInWithEmailAndPassword passwordとemailでsignInする
+func (s *AuthService) SignInWithEmailAndPassword(email, password string) (Auth, error) {
+	return s.signIn(googlePasswordURL, map[string]interface{}{
+		"email":             email,
+		"password":          password,
+		"returnSecureToken": true,
+	})
 }
 
+// SignInWithOAuth OAuthProviderでログインする
 func (s *AuthService) SignInWithOAuth(provider provider.Provider, postBody string) (Auth, error) {
-	return s.signIn(googleIdentityURL, signInParams{
-		PostBody:          postBody,
-		RequestURI:        "http://localhost",
-		ReturnSecureToken: true,
+	return s.signIn(googleIdentityURL, map[string]interface{}{
+		"postBody":          postBody,
+		"requestUri":        "http://localhost",
+		"returnSecureToken": true,
 	})
 }
 
@@ -121,35 +131,15 @@ func (s *AuthService) LinkAccountsWithOAuth(auth Auth, provider provider.Provide
 	return Auth{}
 }
 
-type signInParams struct {
-	RequestURI        string `json:"requestUri"`
-	PostBody          string `json:"postBody"`
-	ReturnSecureToken bool   `json:"returnSecureToken"`
-}
-
-func (s *AuthService) signIn(googleURL string, params signInParams) (Auth, error) {
-	// Request Post
-	body, err := json.Marshal(params)
+func (s *AuthService) signIn(googleURL string, params map[string]interface{}) (Auth, error) {
+	resp, err := s.client.post(googleURL, params)
 	if err != nil {
-		return Auth{}, errors.Wrapf(err, "signInParams Marshal error %#v", params)
-	}
-	url := fmt.Sprintf(googleURL, s.client.config.ApiKey)
-	resp, err := s.client.httpClient.Post(
-		url,
-		"application/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return Auth{}, errors.Wrapf(err, "%s request error params = %#v", url, params)
+		return Auth{}, errors.Wrapf(err, "request error params = %#v", params)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			data = []byte{}
-		}
-		return Auth{}, errors.Errorf("response error statudCode = %d body = %s\n", resp.StatusCode, string(data))
+		return Auth{}, s.client.readBodyError(resp.StatusCode, resp.Body)
 	}
 
 	var auth Auth

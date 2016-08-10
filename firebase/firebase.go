@@ -1,6 +1,16 @@
 package firebase
 
-import "net/http"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/pkg/errors"
+	"gopkg.in/go-pp/pp.v2"
+)
 
 type Client struct {
 	config     Config
@@ -8,6 +18,42 @@ type Client struct {
 
 	Auth  *AuthService
 	Token *TokenService
+}
+
+func (c *Client) postNoResponse(googleURL string, params map[string]interface{}) error {
+	resp, err := c.post(googleURL, params)
+	if err != nil {
+		return errors.Wrapf(err, "request error params = %#v", params)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return c.readBodyError(resp.StatusCode, resp.Body)
+	}
+	return nil
+}
+
+func (c *Client) readBodyError(statusCode int, body io.ReadCloser) error {
+	data, err := ioutil.ReadAll(body)
+	if err != nil {
+		data = []byte{}
+	}
+	return errors.Errorf("response error statudCode = %d body = %s\n", statusCode, string(data))
+}
+
+func (c *Client) post(googleURL string, params map[string]interface{}) (*http.Response, error) {
+	pp.Println(params) // debug log
+	// Request Post
+	body, err := json.Marshal(params)
+	if err != nil {
+		return nil, errors.Wrapf(err, "params Marshal error %#v", params)
+	}
+	url := fmt.Sprintf(googleURL, c.config.ApiKey)
+	return c.httpClient.Post(
+		url,
+		"application/json",
+		bytes.NewReader(body),
+	)
 }
 
 type Config struct {

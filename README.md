@@ -18,7 +18,7 @@ bouillabaisse is Firebase Authentication client command-line tool.
 - [ ] Link Multiple Auth Providers to an Account.
 - [ ] Manage Users in Firebase.
 - [x] Exchange access token and a new refresh token.
-- [ ] Manage Authenticates at LocalStorage.
-- [ ] Verify Email.
-- [ ] Password Reset.
+- [x] ~~Manage Authenticates at LocalStorage.~~
+- [x] Verify Email.
+- [x] Password Reset.
 - [ ] New Email Accept.
