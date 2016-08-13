@@ -13,3 +13,4 @@ import:
   - providers/github
   - providers/google
 - package: github.com/stretchr/objx
+- package: github.com/rcrowley/goagain

@@ -25,11 +25,6 @@ func main() {
 	flag.Parse()
 
 	config := newConfig(*env, *configPath)
-	domain, err := serveWithConfig(config)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 
 	if err := stores.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -101,10 +96,11 @@ func main() {
 					os.Exit(1)
 				}
 			}
-			email := authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
-			stores.Add(email)
 
-			pp.Println(email)
+			emailStore := authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
+			stores.Add(emailStore)
+
+			pp.Println(emailStore)
 
 		case "link-email":
 			uid := getInputSubCommand(input)
@@ -142,8 +138,7 @@ func main() {
 				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
-			var a firebase.Auth
-			a, err = fireClient.Auth.SignInAnonymously()
+			a, err := fireClient.Auth.SignInAnonymously()
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
@@ -193,8 +188,11 @@ func main() {
 				os.Exit(1)
 			}
 
-			signInURL := provider.BuildSignInURL(p, domain)
-			fmt.Fprintln(os.Stdout, signInURL)
+			if err := serveWithConfig(p, config); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
 		case "email-verify":
 			idToken := getInputSubCommand(input)
 			fireClient := firebase.NewClient(

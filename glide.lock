@@ -1,5 +1,5 @@
-hash: 02ee55c83f3955c4512252806e400c7dd1a0fdfcc50b227201eae161c17f94fe
-updated: 2016-08-09T10:25:29.062030249+09:00
+hash: 65f55e46dc7dda87d572cf3db0dd5da337b86ac3e59cc14b2ad9857ffec102fe
+updated: 2016-08-13T15:51:09.902996346+09:00
 imports:
 - name: github.com/azr/backoff
   version: 53511d3c733003985b0b76f733df1f4d0095ee6a
@@ -12,7 +12,7 @@ imports:
 - name: github.com/dgrijalva/jwt-go
   version: 63734eae1ef55eaac06fdc0f312615f2e321e273
 - name: github.com/dustin/go-jsonpointer
-  version: edeb52be0d426693945ed4d6da205faf2e084aca
+  version: e403c209efb17a3f4e6df1b57cf6e9c3083b172e
 - name: github.com/dustin/gojson
   version: 2e71ec9dd5adce3b168cd0dbde03b5cc04951c30
 - name: github.com/garyburd/go-oauth
@@ -40,6 +40,8 @@ imports:
   version: 31f1e8e5addda51bc50ebfc8bb930d4642372654
 - name: github.com/pkg/errors
   version: a22138067af1c4942683050411a841ade67fe1eb
+- name: github.com/rcrowley/goagain
+  version: f2f192b5d1a96e21dd4026ce67cda85e49659a48
 - name: github.com/stretchr/codecs
   version: 8e29b38960a541ed1264b001dcb21701283c590d
   subpackages:
@@ -76,7 +78,7 @@ imports:
 - name: github.com/valyala/fasttemplate
   version: 3b874956e03f1636d171bda64b130f9135f42cff
 - name: golang.org/x/net
-  version: 075e191f18186a8ff2becaf64478e30f4545cdad
+  version: 07b51741c1d6423d4a6abab1c49940ec09cb1aaf
   subpackages:
   - context
 - name: golang.org/x/sys
