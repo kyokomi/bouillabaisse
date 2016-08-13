@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
 	"time"
 
 	"github.com/kyokomi/bouillabaisse/firebase"
@@ -102,9 +101,63 @@ func main() {
 					os.Exit(1)
 				}
 			}
-			stores.Add(authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()})
+			email := authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
+			stores.Add(email)
 
-			pp.Println(a)
+			pp.Println(email)
+
+		case "link-email":
+			uid := getInputSubCommand(input)
+			if aStore, ok := stores.stores[uid]; ok {
+				email, err := inputText("email")
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+
+				password, err := inputText("password")
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+
+				fireClient := firebase.NewClient(
+					firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+				)
+
+				var linkAuth firebase.Auth
+				linkAuth, err = fireClient.Auth.LinkAccountsAsyncWithEmailAndPassword(aStore.Auth, email, password)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+				linkAuthStore := authStore{Auth: linkAuth, CreatedAt: aStore.CreatedAt, UpdateAt: time.Now()}
+				stores.Add(linkAuthStore)
+
+				pp.Println(linkAuthStore)
+			}
+
+		case "anonymously":
+			fireClient := firebase.NewClient(
+				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+			)
+
+			var a firebase.Auth
+			a, err = fireClient.Auth.SignInAnonymously()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			aStore := authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
+			stores.Add(aStore)
+
+			pp.Println(aStore)
+
+		case "local-remove":
+			uid := getInputSubCommand(input)
+
+			stores.Remove(uid)
+			pp.Printf("[%s] remove ok\n", uid)
 
 		case "token":
 			uid := getInputSubCommand(input)

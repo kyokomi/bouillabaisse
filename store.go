@@ -43,6 +43,10 @@ func (a *authStores) Add(store authStore) {
 	a.stores[store.LocalID] = store
 }
 
+func (a *authStores) Remove(localID string) {
+	delete(a.stores, localID)
+}
+
 func (a *authStores) Save(dirPath string, fileName string) error {
 	data, err := yaml.Marshal(&a.stores)
 	if err != nil {

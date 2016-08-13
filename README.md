@@ -14,8 +14,8 @@ bouillabaisse is Firebase Authentication client command-line tool.
 - [x] Authenticate local save.
 - [x] Authenticate local load.
 - [x] Show current Authenticate.
-- [ ] Authenticate with Firebase Anonymously.
-- [ ] Link Multiple Auth Providers to an Account.
+- [x] Authenticate with Firebase Anonymously.
+- [x] Link Multiple Auth Providers to an Account.
 - [ ] Manage Users in Firebase.
 - [x] Exchange access token and a new refresh token.
 - [x] ~~Manage Authenticates at LocalStorage.~~
@@ -23,3 +23,4 @@ bouillabaisse is Firebase Authentication client command-line tool.
 - [x] Password Reset.
 - [ ] New Email Accept.
 - [ ] CommandLine help.
+- [x] Remove Local Account.

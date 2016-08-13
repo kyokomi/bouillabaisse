@@ -74,14 +74,11 @@ func (s *AuthService) SendNewEmailAccept(idToken, oldEmail, nextEmail string) er
 	})
 }
 
-func (s *AuthService) SignInAnonymously() Auth {
-	// TODO:
-	/*
-	   var content = $"{{\"returnSecureToken\":true}}";
-
-	   return await this.SignInWithPostContentAsync(GoogleSignUpUrl, content).ConfigureAwait(false);
-	*/
-	return Auth{}
+// SignInAnonymously AnonymouslyユーザでsignInする
+func (s *AuthService) SignInAnonymously() (Auth, error) {
+	return s.signIn(googleSignUpURL, map[string]interface{}{
+		"returnSecureToken": true,
+	})
 }
 
 // SignInWithEmailAndPassword passwordとemailでsignInする
@@ -102,26 +99,24 @@ func (s *AuthService) SignInWithOAuth(provider provider.Provider, postBody strin
 	})
 }
 
-func (s *AuthService) LinkAccountsAsyncWithEmailAndPassword(auth Auth, email, password string) Auth {
-	// TODO:
-	/*
-	   var content = $"{{\"idToken\":\"{auth.FirebaseToken}\",\"email\":\"{email}\",\"password\":\"{password}\",\"returnSecureToken\":true}}";
-
-	   return await this.SignInWithPostContentAsync(GoogleSetAccountUrl, content).ConfigureAwait(false);
-
-	*/
-	return Auth{}
+// LinkAccountsAsyncWithEmailAndPassword authのアカウントに対してemailとpasswordをLinkする
+func (s *AuthService) LinkAccountsAsyncWithEmailAndPassword(auth Auth, email, password string) (Auth, error) {
+	return s.signIn(googleSetAccountURL, map[string]interface{}{
+		"idToken":           auth.Token,
+		"email":             email,
+		"password":          password,
+		"returnSecureToken": true,
+	})
 }
 
-func (s *AuthService) LinkAccountsWithOAuth(auth Auth, provider provider.Provider, oauthAccessToken string) Auth {
-	// TODO:
-	/*
-	   var providerId = this.GetProviderId(authType);
-	   var content = $"{{\"idToken\":\"{auth.FirebaseToken}\",\"postBody\":\"access_token={oauthAccessToken}&providerId={providerId}\",\"requestUri\":\"http://localhost\",\"returnSecureToken\":true}}";
-
-	   return await this.SignInWithPostContentAsync(GoogleIdentityUrl, content).ConfigureAwait(false);
-	*/
-	return Auth{}
+// LinkAccountsWithOAuth authのアカウントに対して指定したproviderのアカウントをLinkする
+func (s *AuthService) LinkAccountsWithOAuth(auth Auth, postBody string) (Auth, error) {
+	return s.signIn(googleIdentityURL, map[string]interface{}{
+		"idToken":           auth.Token,
+		"postBody":          postBody,
+		"requestUri":        "http://localhost",
+		"returnSecureToken": true,
+	})
 }
 
 func (s *AuthService) signIn(googleURL string, params map[string]interface{}) (Auth, error) {
