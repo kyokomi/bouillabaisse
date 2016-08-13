@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -16,13 +16,15 @@ import (
 	"github.com/rcrowley/goagain"
 	"gopkg.in/go-pp/pp.v2"
 
+	"github.com/kyokomi/bouillabaisse/config"
 	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
+	"github.com/kyokomi/bouillabaisse/store"
 )
 
 type serverContext struct {
 	fireClient *firebase.Client
-	config     config
+	config     config.Config
 }
 
 func (*serverContext) loginHandler(c echo.Context) error {
@@ -53,13 +55,14 @@ func (s *serverContext) callbackHandler(c echo.Context) error {
 	pp.Println(auth) // TODO: debug
 
 	now := time.Now()
-	a := authStore{Auth: auth, CreatedAt: now, UpdateAt: now}
-	stores.Add(a)
+	a := store.AuthStore{Auth: auth, CreatedAt: now, UpdateAt: now}
+	store.Stores.Add(a)
 
 	return c.JSON(http.StatusOK, auth)
 }
 
-func serveWithConfig(p provider.Provider, c config) error {
+// ProviderServeWithConfig serve provider auth server
+func ProviderServeWithConfig(p provider.Provider, c config.Config) error {
 	baseURL := fmt.Sprintf("http://localhost%s", c.Server.ListenAddr)
 
 	// setup
@@ -107,7 +110,7 @@ func createEchoHandler(s serverContext) *echo.Echo {
 	return e
 }
 
-func createGoAgainListener(e *echo.Echo, c config) (net.Listener, error) {
+func createGoAgainListener(e *echo.Echo, c config.Config) (net.Listener, error) {
 	l, err := goagain.Listener()
 	if nil != err {
 		// Listen on a TCP or a UNIX domain socket (TCP here).

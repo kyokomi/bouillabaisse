@@ -9,9 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/go-pp/pp.v2"
+
+	"github.com/kyokomi/bouillabaisse/config"
 	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
-	"gopkg.in/go-pp/pp.v2"
+	"github.com/kyokomi/bouillabaisse/server"
+	"github.com/kyokomi/bouillabaisse/store"
 )
 
 var (
@@ -24,9 +28,9 @@ var (
 func main() {
 	flag.Parse()
 
-	config := newConfig(*env, *configPath)
+	cfg := config.NewConfig(*env, *configPath)
 
-	if err := stores.Load(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
+	if err := store.Stores.Load(cfg.Local.AuthStoreDirPath, cfg.Local.AuthStoreFileName); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -55,7 +59,7 @@ func main() {
 		case "help":
 			fmt.Println("[ exit / help / list / provider / show / token ]")
 		case "list":
-			for _, a := range stores.stores {
+			for _, a := range store.Stores.Data {
 				fmt.Fprintf(os.Stdout, "%s\t%s\t%s\t%s\t%s\n",
 					a.LocalID,
 					a.ProviderID,
@@ -67,7 +71,7 @@ func main() {
 
 		case "show":
 			uid := getInputSubCommand(input)
-			if a, ok := stores.stores[uid]; ok {
+			if a, ok := store.Stores.Data[uid]; ok {
 				pp.Println(a)
 			}
 		case "email":
@@ -84,7 +88,7 @@ func main() {
 			}
 
 			fireClient := firebase.NewClient(
-				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			var a firebase.Auth
@@ -97,14 +101,14 @@ func main() {
 				}
 			}
 
-			emailStore := authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
-			stores.Add(emailStore)
+			emailStore := store.AuthStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
+			store.Stores.Add(emailStore)
 
 			pp.Println(emailStore)
 
 		case "link-email":
 			uid := getInputSubCommand(input)
-			if aStore, ok := stores.stores[uid]; ok {
+			if aStore, ok := store.Stores.Data[uid]; ok {
 				email, err := inputText("email")
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -118,7 +122,7 @@ func main() {
 				}
 
 				fireClient := firebase.NewClient(
-					firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+					firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 				)
 
 				var linkAuth firebase.Auth
@@ -127,15 +131,15 @@ func main() {
 					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
-				linkAuthStore := authStore{Auth: linkAuth, CreatedAt: aStore.CreatedAt, UpdateAt: time.Now()}
-				stores.Add(linkAuthStore)
+				linkAuthStore := store.AuthStore{Auth: linkAuth, CreatedAt: aStore.CreatedAt, UpdateAt: time.Now()}
+				store.Stores.Add(linkAuthStore)
 
 				pp.Println(linkAuthStore)
 			}
 
 		case "anonymously":
 			fireClient := firebase.NewClient(
-				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			a, err := fireClient.Auth.SignInAnonymously()
@@ -143,26 +147,26 @@ func main() {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			aStore := authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
-			stores.Add(aStore)
+			aStore := store.AuthStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()}
+			store.Stores.Add(aStore)
 
 			pp.Println(aStore)
 
 		case "local-remove":
 			uid := getInputSubCommand(input)
 
-			stores.Remove(uid)
+			store.Stores.Remove(uid)
 			pp.Printf("[%s] remove ok\n", uid)
 
 		case "token":
 			uid := getInputSubCommand(input)
 
-			a, ok := stores.stores[uid]
+			a, ok := store.Stores.Data[uid]
 			if !ok {
 				fmt.Fprintf(os.Stderr, "Not found uid [%s]\n", uid)
 			} else {
 				fireClient := firebase.NewClient(
-					firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+					firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 				)
 				token, err := fireClient.Token.ExchangeRefreshToken(a.RefreshToken)
 				if err != nil {
@@ -175,7 +179,7 @@ func main() {
 					a.ExpiresIn = token.ExpiresIn
 					a.UpdateAt = time.Now()
 
-					stores.Add(a) // 上書き
+					store.Stores.Add(a) // 上書き
 				}
 			}
 
@@ -188,7 +192,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			if err := serveWithConfig(p, config); err != nil {
+			if err := server.ProviderServeWithConfig(p, cfg); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
@@ -196,7 +200,7 @@ func main() {
 		case "email-verify":
 			idToken := getInputSubCommand(input)
 			fireClient := firebase.NewClient(
-				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			if err := fireClient.Auth.SendEmailVerify(idToken); err != nil {
@@ -215,11 +219,11 @@ func main() {
 			}
 
 			fireClient := firebase.NewClient(
-				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
-			if err := fireClient.Auth.SendNewEmailAccept(stores.stores[uid].Token,
-				stores.stores[uid].Email, nextEmail); err != nil {
+			if err := fireClient.Auth.SendNewEmailAccept(store.Stores.Data[uid].Token,
+				store.Stores.Data[uid].Email, nextEmail); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			} else {
@@ -228,7 +232,7 @@ func main() {
 		case "pasword-reset":
 			email := getInputSubCommand(input)
 			fireClient := firebase.NewClient(
-				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
+				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			if err := fireClient.Auth.SendPasswordResetEmail(email); err != nil {
@@ -238,7 +242,7 @@ func main() {
 				pp.Println("send ok")
 			}
 		case "save":
-			if err := stores.Save(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
+			if err := store.Stores.Save(cfg.Local.AuthStoreDirPath, cfg.Local.AuthStoreFileName); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			} else {
