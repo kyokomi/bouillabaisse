@@ -16,6 +16,7 @@ const (
 	googleSetAccountURL        = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/setAccountInfo?key=%s"
 )
 
+// Auth Firebase認証結果
 type Auth struct {
 	Token        string `json:"idToken"`
 	RefreshToken string `json:"refreshToken"`
@@ -27,21 +28,13 @@ type Auth struct {
 	LastName      string `json:"lastName"`
 	DisplayName   string `json:"displayName"`
 	ScreenName    string `json:"screenName"`
-	PhotoUrl      string `json:"photoUrl"`
+	PhotoURL      string `json:"photoUrl"`
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"emailVerified"`
 	ProviderID    string `json:"providerId"`
 }
 
-// Config
-// https://github.com/step-up-labs/firebase-authentication-dotnet/blob/master/src/Firebase.Auth/FirebaseConfig.cs
-
-// AuthLink
-// https://github.com/step-up-labs/firebase-authentication-dotnet/blob/master/src/Firebase.Auth/FirebaseAuthLink.cs
-
-// User
-// https://github.com/step-up-labs/firebase-authentication-dotnet/blob/master/src/Firebase.Auth/User.cs
-
+// AuthService Firebaseの認証を行うサービス
 type AuthService struct {
 	client *Client
 }
@@ -71,7 +64,7 @@ func (s *AuthService) SendEmailVerify(idToken string) error {
 	})
 }
 
-// SendEmailVerify 指定のemailユーザにメール確認を通知 TODO: Deprecated うまく動かない
+// SendNewEmailAccept 指定のemailユーザにメール確認を通知 TODO: Deprecated うまく動かない
 func (s *AuthService) SendNewEmailAccept(idToken, oldEmail, nextEmail string) error {
 	return s.client.postNoResponse(googleEmailConfirmationURL, map[string]interface{}{
 		"requestType": "NEW_EMAIL_ACCEPT",

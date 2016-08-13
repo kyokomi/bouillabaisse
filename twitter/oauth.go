@@ -5,6 +5,7 @@ import (
 	"github.com/mrjones/oauth"
 )
 
+// OAuthClient Twitter OAuth1 Client
 type OAuthClient struct {
 	Consumer *oauth.Consumer
 
@@ -12,6 +13,7 @@ type OAuthClient struct {
 	twitterTokens map[string]*oauth.RequestToken
 }
 
+// NewTwitterOAuth create OAuthClient
 func NewTwitterOAuth(cKey, cSecret, callBackURL string) *OAuthClient {
 	consumer := oauth.NewConsumer(cKey, cSecret, oauth.ServiceProvider{
 		RequestTokenUrl:   "https://api.twitter.com/oauth/request_token",
@@ -27,6 +29,7 @@ func NewTwitterOAuth(cKey, cSecret, callBackURL string) *OAuthClient {
 	}
 }
 
+// GetRequestTokenAndURL Kicks off the OAuth authorization process.
 func (t OAuthClient) GetRequestTokenAndURL() (string, error) {
 	token, requestURL, err := t.Consumer.GetRequestTokenAndUrl(t.callBackURL)
 	if token != nil {
@@ -35,6 +38,7 @@ func (t OAuthClient) GetRequestTokenAndURL() (string, error) {
 	return requestURL, err
 }
 
+// GetAccessToken tokenKeyとverificationCodeでAccessTokenを取得
 func (t *OAuthClient) GetAccessToken(tokenKey, verificationCode string) (*oauth.AccessToken, error) {
 	return t.Consumer.AuthorizeToken(t.getTwitterToken(tokenKey), verificationCode)
 }

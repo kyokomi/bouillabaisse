@@ -12,6 +12,7 @@ import (
 	"gopkg.in/go-pp/pp.v2"
 )
 
+// Client is firebase client
 type Client struct {
 	config     Config
 	httpClient *http.Client
@@ -48,7 +49,7 @@ func (c *Client) post(googleURL string, params map[string]interface{}) (*http.Re
 	if err != nil {
 		return nil, errors.Wrapf(err, "params Marshal error %#v", params)
 	}
-	url := fmt.Sprintf(googleURL, c.config.ApiKey)
+	url := fmt.Sprintf(googleURL, c.config.APIKey)
 	return c.httpClient.Post(
 		url,
 		"application/json",
@@ -56,10 +57,12 @@ func (c *Client) post(googleURL string, params map[string]interface{}) (*http.Re
 	)
 }
 
+// Config firebase client configuration
 type Config struct {
-	ApiKey string
+	APIKey string
 }
 
+// NewClient create firebase client
 func NewClient(config Config, transport http.RoundTripper) *Client {
 	c := &Client{
 		config:     config,

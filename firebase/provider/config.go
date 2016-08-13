@@ -1,5 +1,6 @@
 package provider
 
+// Config provider configuration
 type Config struct {
 	AuthSecretKey            string // gomniauth setup secretKey
 	GitHubClientID           string

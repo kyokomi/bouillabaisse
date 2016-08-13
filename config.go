@@ -8,31 +8,31 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Config struct {
-	Server ServerConfig
-	Local  LocalConfig
+type config struct {
+	Server serverConfig
+	Local  localConfig
 	Auth   provider.Config
 }
 
-type ServerConfig struct {
+type serverConfig struct {
 	ListenAddr     string
-	FirebaseApiKey string
+	FirebaseAPIKey string
 }
 
-type LocalConfig struct {
+type localConfig struct {
 	AuthStoreDirPath  string
 	AuthStoreFileName string
 }
 
-func NewConfig(env, configPath string) Config {
+func newConfig(env, configPath string) config {
 	buf, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return Config{}
+		return config{}
 	}
 
-	var cnf map[string]Config
+	var cnf map[string]config
 	if err := yaml.Unmarshal(buf, &cnf); err != nil {
-		return Config{}
+		return config{}
 	}
 
 	pp.Println("config => ", cnf)

@@ -20,16 +20,19 @@ const (
 	callbackPath  = "/auth/callback"
 )
 
-func RESTAuthLoginPath() string {
+// BuildAuthLoginPath build login path
+func BuildAuthLoginPath() string {
 	return fmt.Sprintf("%s/:provider", authLoginPath)
 }
 
-func RESTCallbackPath() string {
+// BuildCallbackPath build callback path
+func BuildCallbackPath() string {
 	return fmt.Sprintf("%s/:provider", callbackPath)
 }
 
 var twitterOAuthClient *twitter.OAuthClient
 
+// InitOAuth OAuthプロバイダー各社の初期化を行います
 func InitOAuth(baseURL string, config Config) {
 	gomniauth.SetSecurityKey(config.AuthSecretKey)
 	gomniauth.WithProviders(
@@ -60,10 +63,12 @@ func buildCallbackURL(p Provider, domain string) string {
 	return fmt.Sprintf("%s%s/%s", domain, callbackPath, p.Name())
 }
 
-func SignInURL(p Provider, domain string) string {
+// BuildSignInURL 指定providerのsignInURLをbuildします
+func BuildSignInURL(p Provider, domain string) string {
 	return fmt.Sprintf("%s%s/%s", domain, authLoginPath, p.Name())
 }
 
+// GetBeginAuthURL 指定したproviderの認証URLを取得します
 func GetBeginAuthURL(p Provider) (string, error) {
 	if p == TwitterProvider {
 		return twitterOAuthClient.GetRequestTokenAndURL()
@@ -76,6 +81,7 @@ func GetBeginAuthURL(p Provider) (string, error) {
 	return provider.GetBeginAuthURL(nil, nil)
 }
 
+// BuildSignInPostBody 指定したproviderの認証に必要なpostBodyを生成します
 func BuildSignInPostBody(p Provider, params map[string][]string) (string, error) {
 	return providerPostBodyFuncMap[p](p, params)
 }

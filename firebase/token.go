@@ -16,6 +16,7 @@ const (
 	googleTokenURL = "https://securetoken.googleapis.com/v1/token?key=%s"
 )
 
+// Token token api response struct
 type Token struct {
 	AccessToken  string `json:"access_token"` // The granted access token.
 	ExpiresIn    string `json:"expires_in"`   // Expiration time of access_token in seconds.
@@ -23,10 +24,12 @@ type Token struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// TokenService is token request service
 type TokenService struct {
 	client *Client
 }
 
+// ExchangeRefreshToken refreshTokenでtokenを再発行
 func (s *TokenService) ExchangeRefreshToken(refreshToken string) (Token, error) {
 	data := url.Values{}
 	data.Set(oauth2.OAuth2KeyGrantType, oauth2.OAuth2KeyRefreshToken)
@@ -34,6 +37,7 @@ func (s *TokenService) ExchangeRefreshToken(refreshToken string) (Token, error) 
 	return s.exchangeToken(data)
 }
 
+// ExchangeAuthorizationCode idTokenでtokenを再発行
 func (s *TokenService) ExchangeAuthorizationCode(idToken string) (Token, error) {
 	data := url.Values{}
 	data.Set(oauth2.OAuth2KeyGrantType, oauth2.OAuth2GrantTypeAuthorizationCode)
@@ -43,7 +47,7 @@ func (s *TokenService) ExchangeAuthorizationCode(idToken string) (Token, error) 
 
 func (s *TokenService) exchangeToken(data url.Values) (Token, error) {
 	// Request Post
-	url := fmt.Sprintf(googleTokenURL, s.client.config.ApiKey)
+	url := fmt.Sprintf(googleTokenURL, s.client.config.APIKey)
 	resp, err := s.client.httpClient.PostForm(url, data)
 	if err != nil {
 		return Token{}, errors.Wrapf(err, "%s request error params = %#v", url, data)

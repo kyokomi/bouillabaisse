@@ -25,8 +25,8 @@ var (
 func main() {
 	flag.Parse()
 
-	config := NewConfig(*env, *configPath)
-	domain, err := ServeWithConfig(config)
+	config := newConfig(*env, *configPath)
+	domain, err := serveWithConfig(config)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -36,11 +36,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-
-	// TODO: help command
-	// TODO: load AuthStore
-	// TODO: show local Auth info
-	// TODO: refreshToken refresh
 
 	getInputCommand := func(input string) string {
 		commands := strings.Fields(input)
@@ -95,7 +90,7 @@ func main() {
 			}
 
 			fireClient := firebase.NewClient(
-				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			var a firebase.Auth
@@ -107,7 +102,7 @@ func main() {
 					os.Exit(1)
 				}
 			}
-			stores.Add(AuthStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()})
+			stores.Add(authStore{Auth: a, CreatedAt: time.Now(), UpdateAt: time.Now()})
 
 			pp.Println(a)
 
@@ -119,7 +114,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Not found uid [%s]\n", uid)
 			} else {
 				fireClient := firebase.NewClient(
-					firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+					firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
 				)
 				token, err := fireClient.Token.ExchangeRefreshToken(a.RefreshToken)
 				if err != nil {
@@ -127,16 +122,17 @@ func main() {
 				} else {
 					pp.Println(token)
 
-					// TODO: token上書き
+					a.Token = token.AccessToken
+					a.RefreshToken = token.RefreshToken
+					a.ExpiresIn = token.ExpiresIn
+					a.UpdateAt = time.Now()
+
+					stores.Add(a) // 上書き
 				}
 			}
 
 		case "provider":
-			providerName, err := inputText("provider [twitter/google/facebook/github/email]")
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
+			providerName := getInputSubCommand(input)
 
 			p := provider.New(providerName)
 			if p == provider.UnknownProvider {
@@ -144,12 +140,12 @@ func main() {
 				os.Exit(1)
 			}
 
-			signInURL := provider.SignInURL(p, domain)
+			signInURL := provider.BuildSignInURL(p, domain)
 			fmt.Fprintln(os.Stdout, signInURL)
 		case "email-verify":
 			idToken := getInputSubCommand(input)
 			fireClient := firebase.NewClient(
-				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			if err := fireClient.Auth.SendEmailVerify(idToken); err != nil {
@@ -168,7 +164,7 @@ func main() {
 			}
 
 			fireClient := firebase.NewClient(
-				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			if err := fireClient.Auth.SendNewEmailAccept(stores.stores[uid].Token,
@@ -181,7 +177,7 @@ func main() {
 		case "pasword-reset":
 			email := getInputSubCommand(input)
 			fireClient := firebase.NewClient(
-				firebase.Config{ApiKey: config.Server.FirebaseApiKey}, &http.Transport{},
+				firebase.Config{APIKey: config.Server.FirebaseAPIKey}, &http.Transport{},
 			)
 
 			if err := fireClient.Auth.SendPasswordResetEmail(email); err != nil {
@@ -194,6 +190,8 @@ func main() {
 			if err := stores.Save(config.Local.AuthStoreDirPath, config.Local.AuthStoreFileName); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
+			} else {
+				pp.Println("save ok")
 			}
 		case "exit":
 			goto END

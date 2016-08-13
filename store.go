@@ -11,19 +11,19 @@ import (
 )
 
 // TODO: SQLiteとかにしたほうがよいかも?
-var stores AuthStores
+var stores authStores
 
-type AuthStores struct {
-	stores map[string]AuthStore
+type authStores struct {
+	stores map[string]authStore
 }
 
-type AuthStore struct {
+type authStore struct {
 	firebase.Auth
 	UpdateAt  time.Time
 	CreatedAt time.Time
 }
 
-func (a *AuthStore) ExpiresInText() string {
+func (a *authStore) ExpiresInText() string {
 	expiredTime, isExpired := a.ExpiredTime()
 	if isExpired || expiredTime.Before(time.Now()) {
 		return "期限切れ" // TODO: text
@@ -31,7 +31,7 @@ func (a *AuthStore) ExpiresInText() string {
 	return expiredTime.Format("2006-01-02 15:04:05")
 }
 
-func (a *AuthStore) ExpiredTime() (time.Time, bool) {
+func (a *authStore) ExpiredTime() (time.Time, bool) {
 	expiresIn, err := strconv.Atoi(a.ExpiresIn)
 	if err != nil {
 		return time.Time{}, true
@@ -39,11 +39,11 @@ func (a *AuthStore) ExpiredTime() (time.Time, bool) {
 	return a.UpdateAt.Add(time.Duration(expiresIn) * time.Second), false
 }
 
-func (a *AuthStores) Add(store AuthStore) {
+func (a *authStores) Add(store authStore) {
 	a.stores[store.LocalID] = store
 }
 
-func (a *AuthStores) Save(dirPath string, fileName string) error {
+func (a *authStores) Save(dirPath string, fileName string) error {
 	data, err := yaml.Marshal(&a.stores)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (a *AuthStores) Save(dirPath string, fileName string) error {
 	return ioutil.WriteFile(filepath.Join(dirPath, fileName), data, 0666)
 }
 
-func (a *AuthStores) Load(dirPath string, fileName string) error {
+func (a *authStores) Load(dirPath string, fileName string) error {
 	data, err := ioutil.ReadFile(filepath.Join(dirPath, fileName))
 	if err != nil {
 		return err

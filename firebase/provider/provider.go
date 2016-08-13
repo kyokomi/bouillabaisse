@@ -1,7 +1,9 @@
 package provider
 
+// Provider 認証プロバイダー
 type Provider string
 
+// Support Provders
 const (
 	GitHubProvider   Provider = "github"
 	TwitterProvider  Provider = "twitter"
@@ -24,6 +26,7 @@ var providerIDMaps = map[Provider]string{
 	TwitterProvider:  "twitter.com",
 }
 
+// New is create provider
 func New(providerName string) Provider {
 	provider, ok := providerMaps[providerName]
 	if ok {
@@ -32,6 +35,7 @@ func New(providerName string) Provider {
 	return UnknownProvider
 }
 
+// Name return provider name
 func (p Provider) Name() string {
 	return string(p)
 }

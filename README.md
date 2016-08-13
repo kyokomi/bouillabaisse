@@ -22,3 +22,4 @@ bouillabaisse is Firebase Authentication client command-line tool.
 - [x] Verify Email.
 - [x] Password Reset.
 - [ ] New Email Accept.
+- [ ] CommandLine help.
