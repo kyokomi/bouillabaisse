@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo"
+	"github.com/pkg/errors"
 	"gopkg.in/go-pp/pp.v2"
 
 	"github.com/kyokomi/bouillabaisse/config"
@@ -137,6 +139,53 @@ func main() {
 				pp.Println(linkAuthStore)
 			}
 
+		case "link-oauth":
+			uid := getInputSubCommand(input)
+
+			if aStore, ok := store.Stores.Data[uid]; ok {
+
+				providerName, err := inputText("link provider [ twitter / facebook / google / github ]")
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+
+				p := provider.New(providerName)
+				if p == provider.UnknownProvider {
+					fmt.Fprintf(os.Stderr, "Don't support provider [%s]\n", providerName)
+					os.Exit(1)
+				}
+
+				if err := server.ProviderServeWithConfig(p, cfg, func(ctx echo.Context) error {
+					linkProviderName := ctx.Param("provider")
+					linkProvider := provider.New(linkProviderName)
+					postBody, err := provider.BuildSignInPostBody(linkProvider, ctx.QueryParams())
+					if err != nil {
+						return errors.Wrapf(err, "%s BuildSignInPostBody error", linkProvider.Name())
+					}
+
+					fireClient := firebase.NewClient(
+						firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
+					)
+
+					var linkAuth firebase.Auth
+					linkAuth, err = fireClient.Auth.LinkAccountsWithOAuth(aStore.Auth, postBody)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						os.Exit(1)
+					}
+					linkAuthStore := store.AuthStore{Auth: linkAuth, CreatedAt: aStore.CreatedAt, UpdateAt: time.Now()}
+					store.Stores.Add(linkAuthStore)
+
+					pp.Println(linkAuthStore)
+
+					return nil
+				}); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+			}
+
 		case "anonymously":
 			fireClient := firebase.NewClient(
 				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
@@ -192,7 +241,27 @@ func main() {
 				os.Exit(1)
 			}
 
-			if err := server.ProviderServeWithConfig(p, cfg); err != nil {
+			if err := server.ProviderServeWithConfig(p, cfg, func(ctx echo.Context) error {
+				postBody, err := provider.BuildSignInPostBody(p, ctx.QueryParams())
+				if err != nil {
+					return errors.Wrapf(err, "%s BuildSignInPostBody error", p.Name())
+				}
+
+				fireClient := firebase.NewClient(
+					firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
+				)
+				auth, err := fireClient.Auth.SignInWithOAuth(p, postBody)
+				if err != nil {
+					return errors.Wrapf(err, "%s SignInWithOAuth error", p.Name())
+				}
+
+				pp.Println(auth)
+
+				now := time.Now()
+				a := store.AuthStore{Auth: auth, CreatedAt: now, UpdateAt: now}
+				store.Stores.Add(a)
+				return nil
+			}); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}

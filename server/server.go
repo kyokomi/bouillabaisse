@@ -6,74 +6,33 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine"
 	"github.com/labstack/echo/engine/standard"
 	"github.com/labstack/echo/middleware"
-	"github.com/pkg/errors"
 	"github.com/rcrowley/goagain"
-	"gopkg.in/go-pp/pp.v2"
 
 	"github.com/kyokomi/bouillabaisse/config"
 	"github.com/kyokomi/bouillabaisse/firebase"
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
-	"github.com/kyokomi/bouillabaisse/store"
 )
 
-type serverContext struct {
-	fireClient *firebase.Client
-	config     config.Config
-}
-
-func (*serverContext) loginHandler(c echo.Context) error {
-	providerName := c.Param("provider")
-
-	loginURL, err := provider.GetBeginAuthURL(provider.New(providerName))
-	if err != nil {
-		return errors.Wrapf(err, "GetBeginAuthURLの呼び出し中にエラーが発生しました: %s", providerName)
-	}
-
-	return c.Redirect(http.StatusTemporaryRedirect, loginURL)
-}
-
-func (s *serverContext) callbackHandler(c echo.Context) error {
-	providerName := c.Param("provider")
-
-	p := provider.New(providerName)
-	postBody, err := provider.BuildSignInPostBody(p, c.QueryParams())
-	if err != nil {
-		return errors.Wrapf(err, "%s BuildSignInPostBody error", p.Name())
-	}
-
-	auth, err := s.fireClient.Auth.SignInWithOAuth(p, postBody)
-	if err != nil {
-		return errors.Wrapf(err, "%s SignInWithOAuth error", p.Name())
-	}
-
-	pp.Println(auth) // TODO: debug
-
-	now := time.Now()
-	a := store.AuthStore{Auth: auth, CreatedAt: now, UpdateAt: now}
-	store.Stores.Add(a)
-
-	return c.JSON(http.StatusOK, auth)
-}
+type AuthCallbackFunc func(ctx echo.Context) error
 
 // ProviderServeWithConfig serve provider auth server
-func ProviderServeWithConfig(p provider.Provider, c config.Config) error {
+func ProviderServeWithConfig(p provider.Provider, c config.Config, fn AuthCallbackFunc) error {
 	baseURL := fmt.Sprintf("http://localhost%s", c.Server.ListenAddr)
 
 	// setup
 	provider.InitOAuth(baseURL, c.Auth)
 
-	e := createEchoHandler(serverContext{
+	e := createEcho(serverContext{
 		fireClient: firebase.NewClient(
 			firebase.Config{APIKey: c.Server.FirebaseAPIKey}, &http.Transport{},
 		),
 		config: c,
-	})
+	}, fn)
 	l, err := createGoAgainListener(e, c)
 	if err != nil {
 		return err
@@ -85,7 +44,7 @@ func ProviderServeWithConfig(p provider.Provider, c config.Config) error {
 	return goagaginWait(l)
 }
 
-func createEchoHandler(s serverContext) *echo.Echo {
+func createEcho(s serverContext, fn AuthCallbackFunc) *echo.Echo {
 	e := echo.New()
 
 	// middleware
@@ -105,7 +64,9 @@ func createEchoHandler(s serverContext) *echo.Echo {
 	})
 
 	e.GET(provider.BuildAuthLoginPath(), s.loginHandler)
-	e.GET(provider.BuildCallbackPath(), s.callbackHandler)
+	e.GET(provider.BuildCallbackPath(), func(ctx echo.Context) error {
+		return s.callbackHandler(ctx, fn)
+	})
 
 	return e
 }
@@ -128,7 +89,7 @@ func createGoAgainListener(e *echo.Echo, c config.Config) (net.Listener, error) 
 		go serve(e, l)
 
 		// Kill the parent, now that the child has started successfully.
-		if err := goagain.Kill(); nil != err {
+		if err := goagain.Kill(); err != nil {
 			return nil, err
 		}
 	}
