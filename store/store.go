@@ -46,6 +46,9 @@ func (a *AuthStore) ExpiredTime() (time.Time, bool) {
 
 // Add added auth store
 func (a *AuthStores) Add(store AuthStore) {
+	if a.Data == nil {
+		a.Data = map[string]AuthStore{}
+	}
 	a.Data[store.LocalID] = store
 }
 
