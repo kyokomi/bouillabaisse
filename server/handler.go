@@ -27,7 +27,7 @@ func (*serverContext) loginHandler(ctx echo.Context) error {
 	return ctx.Redirect(http.StatusTemporaryRedirect, loginURL)
 }
 
-func (s *serverContext) callbackHandler(ctx echo.Context, callbackFunc AuthCallbackFunc) error {
+func (s *serverContext) callbackHandler(ctx echo.Context, callbackFunc AuthCallbackListenerFunc) error {
 	providerName := ctx.Param("provider")
 
 	p := provider.New(providerName)

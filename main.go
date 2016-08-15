@@ -310,6 +310,35 @@ func main() {
 			} else {
 				pp.Println("send ok")
 			}
+		case "get-account":
+			uid := getInputSubCommand(input)
+			authStore := store.Stores.Data[uid]
+
+			fireClient := firebase.NewClient(
+				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
+			)
+
+			accountInfo, err := fireClient.Account.GetAccountInfo(authStore.Token)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			} else {
+				pp.Println(accountInfo)
+
+				for _, u := range accountInfo.Users {
+					if u.LocalID != authStore.LocalID {
+						continue
+					}
+
+					authStore.DisplayName = u.DisplayName
+					authStore.Email = u.Email
+					authStore.PhotoURL = u.PhotoURL
+					authStore.UpdateAt = time.Now()
+					authStore.EmailVerified = u.EmailVerified
+
+					store.Stores.Add(authStore)
+				}
+			}
 		case "save":
 			if err := store.Stores.Save(cfg.Local.AuthStoreDirPath, cfg.Local.AuthStoreFileName); err != nil {
 				fmt.Fprintln(os.Stderr, err)

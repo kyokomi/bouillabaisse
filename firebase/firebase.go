@@ -17,8 +17,9 @@ type Client struct {
 	config     Config
 	httpClient *http.Client
 
-	Auth  *AuthService
-	Token *TokenService
+	Auth    *AuthService
+	Token   *TokenService
+	Account *AccountService
 }
 
 func (c *Client) postNoResponse(googleURL string, params map[string]interface{}) error {
@@ -73,6 +74,9 @@ func NewClient(config Config, transport http.RoundTripper) *Client {
 		client: c,
 	}
 	c.Token = &TokenService{
+		client: c,
+	}
+	c.Account = &AccountService{
 		client: c,
 	}
 

@@ -18,10 +18,11 @@ import (
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
 )
 
-type AuthCallbackFunc func(ctx echo.Context) error
+// AuthCallbackListenerFunc 認証後に呼ばれるcallbackのWebAPIの処理のListener
+type AuthCallbackListenerFunc func(ctx echo.Context) error
 
 // ProviderServeWithConfig serve provider auth server
-func ProviderServeWithConfig(p provider.Provider, c config.Config, fn AuthCallbackFunc) error {
+func ProviderServeWithConfig(p provider.Provider, c config.Config, fn AuthCallbackListenerFunc) error {
 	baseURL := fmt.Sprintf("http://localhost%s", c.Server.ListenAddr)
 
 	// setup
@@ -44,7 +45,7 @@ func ProviderServeWithConfig(p provider.Provider, c config.Config, fn AuthCallba
 	return goagaginWait(l)
 }
 
-func createEcho(s serverContext, fn AuthCallbackFunc) *echo.Echo {
+func createEcho(s serverContext, fn AuthCallbackListenerFunc) *echo.Echo {
 	e := echo.New()
 
 	// middleware
