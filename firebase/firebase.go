@@ -32,6 +32,12 @@ func (c *Client) postNoResponse(googleURL string, params map[string]interface{})
 	if resp.StatusCode != http.StatusOK {
 		return c.readBodyError(resp.StatusCode, resp.Body)
 	}
+
+	var responseData map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&responseData); err == nil {
+		pp.Println(responseData)
+	}
+
 	return nil
 }
 

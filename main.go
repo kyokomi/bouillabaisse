@@ -242,17 +242,19 @@ func main() {
 			}
 
 			if err := server.ProviderServeWithConfig(p, cfg, func(ctx echo.Context) error {
-				postBody, err := provider.BuildSignInPostBody(p, ctx.QueryParams())
+				linkProviderName := ctx.Param("provider")
+				linkProvider := provider.New(linkProviderName)
+				postBody, err := provider.BuildSignInPostBody(linkProvider, ctx.QueryParams())
 				if err != nil {
-					return errors.Wrapf(err, "%s BuildSignInPostBody error", p.Name())
+					return errors.Wrapf(err, "%s BuildSignInPostBody error", linkProvider.Name())
 				}
 
 				fireClient := firebase.NewClient(
 					firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
 				)
-				auth, err := fireClient.Auth.SignInWithOAuth(p, postBody)
+				auth, err := fireClient.Auth.SignInWithOAuth(linkProvider, postBody)
 				if err != nil {
-					return errors.Wrapf(err, "%s SignInWithOAuth error", p.Name())
+					return errors.Wrapf(err, "%s SignInWithOAuth error", linkProvider.Name())
 				}
 
 				pp.Println(auth)
@@ -298,7 +300,7 @@ func main() {
 			} else {
 				pp.Println("send ok")
 			}
-		case "pasword-reset":
+		case "password-reset":
 			email := getInputSubCommand(input)
 			fireClient := firebase.NewClient(
 				firebase.Config{APIKey: cfg.Server.FirebaseAPIKey}, &http.Transport{},
