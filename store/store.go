@@ -26,6 +26,16 @@ type AuthStore struct {
 	CreatedAt time.Time
 }
 
+// NewAuthStore create AuthStore
+func NewAuthStore(a firebase.Auth) AuthStore {
+	nowTime := time.Now()
+	return AuthStore{
+		Auth:      a,
+		UpdateAt:  nowTime,
+		CreatedAt: nowTime,
+	}
+}
+
 // ExpiresInText return expiresTime string
 func (a *AuthStore) ExpiresInText() string {
 	expiredTime, isExpired := a.ExpiredTime()

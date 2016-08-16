@@ -7,7 +7,7 @@ type Config struct {
 	GitHubSecretKey          string
 	GoogleClientID           string
 	GoogleSecretKey          string
-	FacebookID               string
+	FacebookClientID         string
 	FacebookSecretKey        string
 	TwitterConsumerID        string
 	TwitterConsumerSecretKey string

@@ -47,7 +47,7 @@ func InitOAuth(baseURL string, config Config) {
 			buildCallbackURL(GoogleProvider, baseURL),
 		),
 		facebook.New(
-			config.FacebookID,
+			config.FacebookClientID,
 			config.FacebookSecretKey,
 			buildCallbackURL(FacebookProvider, baseURL),
 		),
