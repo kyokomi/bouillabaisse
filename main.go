@@ -136,7 +136,7 @@ func main() {
 		{
 			Name:   "get-account",
 			Usage:  "Get Firebase Account info at Firebase Auth ",
-			Action: refreshTokenCommand,
+			Action: getAccountCommand,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "uid",
