@@ -3,7 +3,6 @@ package config
 import (
 	"io/ioutil"
 
-	"gopkg.in/go-pp/pp.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/kyokomi/bouillabaisse/firebase/provider"
@@ -39,8 +38,6 @@ func NewConfig(env, configPath string) Config {
 	if err := yaml.Unmarshal(buf, &cnf); err != nil {
 		return Config{}
 	}
-
-	pp.Println("config => ", cnf)
 
 	return cnf[env]
 }
