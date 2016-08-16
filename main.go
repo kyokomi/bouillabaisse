@@ -16,7 +16,7 @@ var cfg config.Config
 
 func main() {
 	app := cli.NewApp()
-	app.Version = "0.0.1"
+	app.Version = "0.1.1"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config, c",
