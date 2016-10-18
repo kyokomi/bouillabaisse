@@ -13,7 +13,7 @@ go get github.com/kyokomi/bouillabaisse
 ### create authstore.yaml
 
 ```sh
-$ mkdir authstore.yaml # config.yaml from `authstorefilename` key
+$ touch authstore.yaml # config.yaml from `authstorefilename` key
 ```
 
 ## Usage
