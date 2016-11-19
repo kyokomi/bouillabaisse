@@ -42,7 +42,7 @@ func main() {
 	app.Action = dialogueMode
 	app.Commands = []cli.Command{
 		{
-			Name:   "list",
+			Name:   "ls", // list
 			Usage:  "Shows a list of firebase accounts at local store",
 			Action: showLocalStoreAccountListCommand,
 		},
@@ -123,7 +123,7 @@ func main() {
 			},
 		},
 		{
-			Name:   "refresh-token",
+			Name:   "r", // refresh-token
 			Usage:  "Refresh token for Firebase Auth Account",
 			Action: refreshTokenCommand,
 			Flags: []cli.Flag{
