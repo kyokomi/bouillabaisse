@@ -50,7 +50,6 @@ func (c *Client) readBodyError(statusCode int, body io.ReadCloser) error {
 }
 
 func (c *Client) post(googleURL string, params map[string]interface{}) (*http.Response, error) {
-	pp.Println(params) // debug log
 	// Request Post
 	body, err := json.Marshal(params)
 	if err != nil {
